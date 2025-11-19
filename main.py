@@ -1,6 +1,9 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
+from database import create_document
 
 app = FastAPI()
 
@@ -12,13 +15,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+class LeadIn(BaseModel):
+    name: str = Field(..., min_length=2, max_length=120)
+    email: EmailStr
+    company: Optional[str] = Field(None, max_length=200)
+    message: str = Field(..., min_length=10, max_length=5000)
+
+
 @app.get("/")
 def read_root():
-    return {"message": "Hello from FastAPI Backend!"}
+    return {"message": "CloudEagle Backend Running"}
+
+
+@app.post("/contact")
+def create_lead(payload: LeadIn):
+    try:
+        lead_id = create_document("lead", payload)
+        return {"success": True, "id": lead_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/hello")
 def hello():
     return {"message": "Hello from the backend API!"}
+
 
 @app.get("/test")
 def test_database():
